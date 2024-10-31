@@ -1,5 +1,5 @@
 {
-  "name": "postgresql-sts",
+  "name": "db-sts",
   "version": "0.1.0",
   "private": true,
   "scripts": {

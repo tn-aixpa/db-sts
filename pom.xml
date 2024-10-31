@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>it.smartcommunitylab</groupId>
-	<artifactId>postgresql-sts</artifactId>
+	<artifactId>db-sts</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>postgresql-sts</name>
-	<description>Demo project for Spring Boot</description>
+	<name>db-sts</name>
+	<description>Database Secure Token Exchange Service</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -42,6 +42,10 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>		
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
