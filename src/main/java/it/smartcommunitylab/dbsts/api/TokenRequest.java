@@ -19,6 +19,7 @@ package it.smartcommunitylab.dbsts.api;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -33,20 +34,14 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class TokenResponse implements Serializable {
+public class TokenRequest implements Serializable {
 
-    @JsonProperty("username")
-    private String username;
+    @JsonProperty("web-identity-token")
+    private String token;
 
-    @JsonProperty("password")
-    private String password;
+    @JsonProperty("duration")
+    private Integer duration;
 
-    @JsonProperty("expires_in")
-    private Long expiration;
-
-    @JsonProperty("client_id")
-    private String clientId;
-
-    @JsonProperty("issuer")
-    private String issuer;
+    @JsonProperty("assume-roles")
+    private Set<String> roles;
 }

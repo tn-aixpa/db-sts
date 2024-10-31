@@ -21,6 +21,7 @@ spring:
     password: ${JDBC_PASS:}
     username: ${JDBC_USER:sts}
     url: ${JDBC_URL:}
+    platform: ${JDBC_PLATFORM:postgresql}
 
 # Application 
 application:
@@ -28,6 +29,11 @@ application:
   name: @project.name@
   description: @project.description@
   version: @project.version@
+logging:
+   level:
+      ROOT: INFO
+      it.smartcommunitylabdhub: ${LOG_LEVEL:INFO}
+
 
 # STS
 sts:

@@ -16,9 +16,11 @@
 
 package it.smartcommunitylab.dbsts.db;
 
+import it.smartcommunitylab.dbsts.jwt.WebIdentity;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -31,8 +33,6 @@ import org.springframework.security.crypto.keygen.StringKeyGenerator;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
-
-import it.smartcommunitylab.dbsts.jwt.WebIdentity;
 
 @Service
 @Slf4j
@@ -75,7 +75,7 @@ public class DbManager implements InitializingBean {
         this.adapter = adapter;
     }
 
-    public DbUser exchange(@NotNull WebIdentity webIdentity, List<String> requestedRoles) {
+    public DbUser exchange(@NotNull WebIdentity webIdentity, Collection<String> requestedRoles) {
         if (webIdentity == null) {
             throw new IllegalArgumentException("invalid web identity");
         }
@@ -102,12 +102,13 @@ public class DbManager implements InitializingBean {
             roles = new HashSet<>(requestedRoles);
         }
 
-        //generate secure password
+        //generate secure credentials
+        String username = pwdGenerator.generateKey();
         String password = pwdGenerator.generateKey();
 
         //convert
         DbUser user = DbUser.builder()
-            .username(webIdentity.getUsername())
+            .username(username)
             .password(password)
             .roles(roles)
             .validUntil(expiration)

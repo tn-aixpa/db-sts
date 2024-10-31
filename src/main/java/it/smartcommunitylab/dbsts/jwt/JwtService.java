@@ -56,7 +56,7 @@ public class JwtService {
 
     private final JwtAuthenticationProvider jwtAuthProvider;
 
-    private Long defaultDuration = 3600l;
+    private int defaultDuration = 3600;
 
     public JwtService(
         @Value("${sts.jwt.issuer-uri}") String issuerUri,
@@ -75,13 +75,13 @@ public class JwtService {
     }
 
     @Autowired
-    public void setDuration(@Value("${sts.credentials.duration}") Long duration) {
+    public void setDuration(@Value("${sts.credentials.duration}") Integer duration) {
         if (duration != null && duration > 120) {
             this.defaultDuration = duration;
         }
     }
 
-    public WebIdentity assumeWebIdentity(@NotNull String token, Long duration) {
+    public WebIdentity assumeWebIdentity(@NotNull String token, Integer duration) {
         log.info("assume web identity request");
         if (log.isTraceEnabled()) {
             log.trace("token: {}", token);

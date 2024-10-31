@@ -25,7 +25,7 @@ public class HumanStringKeyGenerator implements StringKeyGenerator {
 
     private static final int DEFAULT_KEY_LENGTH = 12;
     private static final char[] DEFAULT_SPACE =
-        "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_".toCharArray();
+        "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-".toCharArray();
 
     private Random random = new SecureRandom();
     private int length;

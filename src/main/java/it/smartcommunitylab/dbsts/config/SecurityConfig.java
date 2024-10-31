@@ -42,10 +42,11 @@ public class SecurityConfig {
 
     @Bean("securityFilterChain")
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        AntPathRequestMatcher reqMatcher = new AntPathRequestMatcher("/**");
         HttpSecurity securityChain = http
-            .securityMatcher(new AntPathRequestMatcher("/**"))
+            .securityMatcher(reqMatcher)
             .authorizeHttpRequests(auth -> {
-                auth.anyRequest().hasRole("CLIENT").anyRequest().authenticated();
+                auth.requestMatchers(reqMatcher).hasRole("CLIENT").anyRequest().authenticated();
             })
             // disable request cache
             .requestCache(requestCache -> requestCache.disable())
