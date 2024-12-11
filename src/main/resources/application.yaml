@@ -17,11 +17,20 @@ spring:
   application:
     name: db-sts
   datasource:
-    driverClassName: org.postgresql.Driver
-    password: ${JDBC_PASS:}
-    username: ${JDBC_USER:sts}
-    url: ${JDBC_URL:}
-    platform: ${JDBC_PLATFORM:postgresql}
+    sts:
+      driverClassName: org.postgresql.Driver
+      password: ${JDBC_PASS:}
+      username: ${JDBC_USER:sts}
+      url: ${JDBC_URL:}
+      platform: ${JDBC_PLATFORM:postgresql}
+    service:
+      driverClassName: org.postgresql.Driver
+      password: ${JDBC_SERVICE_PASS:}
+      username: ${JDBC_SERVICE_USER:users}
+      url: ${JDBC_SERVICE_URL:}
+      platform: ${JDBC_SERVICE_PLATFORM:postgresql}
+
+
 
 # Application 
 application:
@@ -33,7 +42,8 @@ logging:
    level:
       ROOT: INFO
       it.smartcommunitylabdhub: ${LOG_LEVEL:INFO}
-
+      com.zaxxer.hikari: DEBUG
+      org.hibernate: DEBUG
 
 # STS
 sts:
@@ -48,3 +58,4 @@ sts:
     issuer-uri: ${STS_JWT_ISSUER_URI:}
     audience: ${STS_JWT_AUDIENCE:sts}
     claim: ${STS_JWT_CLAIM:roles}
+

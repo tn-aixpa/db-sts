@@ -23,7 +23,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
@@ -86,7 +85,7 @@ public class DbManager implements InitializingBean {
         }
 
         //validity
-        Instant now = Instant.now();
+        Instant now = Instant.now(); //(include)
         Instant expiration = webIdentity.getExpiresAt() != null
             ? webIdentity.getExpiresAt()
             : now.plus(defaultDuration, ChronoUnit.SECONDS);
@@ -125,4 +124,6 @@ public class DbManager implements InitializingBean {
         //return
         return user;
     }
+
+    //TODO Implement delete -> call adapter and update table setting flag 'deleted = true'
 }

@@ -18,12 +18,15 @@ package it.smartcommunitylab.dbsts.api;
 
 import it.smartcommunitylab.dbsts.db.DbManager;
 import it.smartcommunitylab.dbsts.db.DbUser;
+import it.smartcommunitylab.dbsts.db.entity.User;
 import it.smartcommunitylab.dbsts.jwt.JwtService;
 import it.smartcommunitylab.dbsts.jwt.WebIdentity;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
+
+import it.smartcommunitylab.dbsts.service.interfaces.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +52,9 @@ public class StsEndpoint implements InitializingBean {
 
     @Autowired
     private DbManager dbManager;
+
+    @Autowired
+    UserService userService;
 
     @Override
     public void afterPropertiesSet() throws Exception {
@@ -104,6 +110,18 @@ public class StsEndpoint implements InitializingBean {
             user.getValidUntil()
         );
 
+
+        //create db user
+        userService.create(User.builder()
+                .wIIssuer(webIdentity.getIssuer())
+                .wIUsername(webIdentity.getUsername())
+                .wIExpiresAt(webIdentity.getExpiresAt())
+                .dBUserRoles(user.getRoles())
+                .dBUserUsername(user.getUsername())
+                .dBUserValidUntil(user.getValidUntil())
+                .build());
+
+        // Store
         Long expiration = user.getValidUntil() != null
             ? Duration.between(Instant.now(), user.getValidUntil()).toSeconds()
             : null;

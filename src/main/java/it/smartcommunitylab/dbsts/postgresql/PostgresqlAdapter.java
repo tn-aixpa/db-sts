@@ -1,12 +1,12 @@
 /**
  * Copyright 2024 the original author or authors
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *     https://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * https://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,6 +18,9 @@ package it.smartcommunitylab.dbsts.postgresql;
 
 import it.smartcommunitylab.dbsts.db.DbAdapter;
 import it.smartcommunitylab.dbsts.db.DbUser;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -25,7 +28,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import javax.sql.DataSource;
+
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.format.datetime.DateFormatter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -34,7 +40,7 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 @Component
-@ConditionalOnProperty(prefix = "spring.datasource", name = "platform", havingValue = "postgresql")
+@ConditionalOnProperty(prefix = "spring.datasource.sts", name = "platform", havingValue = "postgresql")
 @Slf4j
 public class PostgresqlAdapter implements DbAdapter {
 
@@ -49,9 +55,8 @@ public class PostgresqlAdapter implements DbAdapter {
     private final JdbcTemplate jdbcTemplate;
     private final DateFormat dateFormatter;
 
-    public PostgresqlAdapter(DataSource dataSource) {
-        Assert.notNull(dataSource, "DataSource required");
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    public PostgresqlAdapter(@Qualifier("stsJdbcTemplate") JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
         this.dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
     }
 
@@ -106,8 +111,23 @@ public class PostgresqlAdapter implements DbAdapter {
     }
 
     private String hash(String password) {
+
         //TODO md5 hash the password
-        return password;
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(password.getBytes());
+
+            byte[] digest = md.digest();
+
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            password = sb.toString();
+            return password;
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private String quote(String value) {

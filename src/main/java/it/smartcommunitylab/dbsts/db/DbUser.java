@@ -34,12 +34,12 @@ import lombok.ToString;
 @ToString
 public class DbUser {
 
-    private String username;
+    private String username; //(include)
 
     @ToString.Exclude
     private String password;
 
-    private Collection<String> roles;
+    private Collection<String> roles;//(include)
 
-    private Instant validUntil;
+    private Instant validUntil;//(include)
 }
