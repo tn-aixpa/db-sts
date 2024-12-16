@@ -20,15 +20,12 @@ import it.smartcommunitylab.dbsts.jwt.WebIdentity;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.keygen.StringKeyGenerator;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -37,17 +34,17 @@ import org.springframework.util.StringUtils;
 @Slf4j
 public class DbManager implements InitializingBean {
 
-    private final StringKeyGenerator pwdGenerator;
+    private final org.springframework.security.crypto.keygen.StringKeyGenerator pwdGenerator;
 
     private DbAdapter adapter;
 
-    private Long defaultDuration = 3600l;
+    private Long defaultDuration = 3600L;
     private Set<String> defaultRoles = Collections.emptySet();
 
     public DbManager(@Value("${sts.credentials.password-length}") Integer pwdLength) {
         Assert.notNull(pwdLength, "pwd length must be set");
 
-        this.pwdGenerator = new HumanStringKeyGenerator(pwdLength.intValue());
+        this.pwdGenerator = new KeyGenerator(pwdLength);
     }
 
     @Override
@@ -125,5 +122,9 @@ public class DbManager implements InitializingBean {
         return user;
     }
 
-    //TODO Implement delete -> call adapter and update table setting flag 'deleted = true'
+    // Delete roles for users
+    public void delete(String roles) {
+        adapter.delete(roles);
+    }
+
 }

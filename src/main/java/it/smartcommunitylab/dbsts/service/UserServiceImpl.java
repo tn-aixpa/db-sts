@@ -5,6 +5,9 @@ import it.smartcommunitylab.dbsts.db.repository.UserRepository;
 import it.smartcommunitylab.dbsts.service.interfaces.UserService;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.util.List;
+
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -20,7 +23,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void delete(String username) {
+    public void delete() {
 
+        List<User> expiredUsers = userRepository.findExpiredUsers(Instant.now());
+
+        if (!expiredUsers.isEmpty()) {
+            List<Long> ids = expiredUsers.stream().map(User::getId).toList();
+            userRepository.markUsersAsDeleted(ids);
+        }
     }
 }

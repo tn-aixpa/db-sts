@@ -18,10 +18,11 @@ package it.smartcommunitylab.dbsts.db;
 
 import java.security.SecureRandom;
 import java.util.Random;
+
 import org.springframework.security.crypto.keygen.StringKeyGenerator;
 import org.springframework.util.Assert;
 
-public class HumanStringKeyGenerator implements StringKeyGenerator {
+public class KeyGenerator implements StringKeyGenerator {
 
     private static final int DEFAULT_KEY_LENGTH = 12;
     private static final char[] DEFAULT_SPACE =
@@ -30,11 +31,11 @@ public class HumanStringKeyGenerator implements StringKeyGenerator {
     private Random random = new SecureRandom();
     private int length;
 
-    public HumanStringKeyGenerator() {
+    public KeyGenerator() {
         this(DEFAULT_KEY_LENGTH);
     }
 
-    public HumanStringKeyGenerator(int length) {
+    public KeyGenerator(int length) {
         Assert.isTrue(length > 1, "length must be major than 1");
         this.length = length;
     }
