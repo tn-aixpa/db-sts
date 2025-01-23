@@ -18,15 +18,15 @@ package it.smartcommunitylab.dbsts.api;
 
 import it.smartcommunitylab.dbsts.db.DbManager;
 import it.smartcommunitylab.dbsts.db.DbUser;
-import it.smartcommunitylab.dbsts.db.entity.User;
+import it.smartcommunitylab.dbsts.db.User;
+import it.smartcommunitylab.dbsts.db.UserRepository;
 import it.smartcommunitylab.dbsts.jwt.JwtService;
 import it.smartcommunitylab.dbsts.jwt.WebIdentity;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Date;
 import java.util.Map;
 import java.util.Set;
-
-import it.smartcommunitylab.dbsts.service.interfaces.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,9 +52,6 @@ public class StsEndpoint implements InitializingBean {
 
     @Autowired
     private DbManager dbManager;
-
-    @Autowired
-    UserService userService;
 
     @Override
     public void afterPropertiesSet() throws Exception {
@@ -102,36 +99,25 @@ public class StsEndpoint implements InitializingBean {
         Set<String> roles = request.getRoles();
         log.debug("generate db user for client {} requested roles {}", client, roles);
 
-        DbUser user = dbManager.exchange(webIdentity, roles);
+        DbUser dbUser = dbManager.exchange(webIdentity, roles);
         log.debug(
             "generated db user {} with roles {} valid until {}",
-            user.getUsername(),
-            user.getRoles(),
-            user.getValidUntil()
+            dbUser.getUsername(),
+            dbUser.getRoles(),
+            dbUser.getValidUntil()
         );
 
-
-        //create db user
-        userService.create(User.builder()
-                .wIIssuer(webIdentity.getIssuer())
-                .wIUsername(webIdentity.getUsername())
-                .wIExpiresAt(webIdentity.getExpiresAt())
-                .dBUserRoles(user.getRoles())
-                .dBUserUsername(user.getUsername())
-                .dBUserValidUntil(user.getValidUntil())
-                .build());
-
-        // Store
-        Long expiration = user.getValidUntil() != null
-            ? Duration.between(Instant.now(), user.getValidUntil()).toSeconds()
+        //build response
+        Long expiration = dbUser.getValidUntil() != null
+            ? Duration.between(Instant.now(), dbUser.getValidUntil()).toSeconds()
             : null;
 
-        //build response
         return TokenResponse.builder()
             .clientId(client)
             .expiration(expiration)
-            .username(user.getUsername())
-            .password(user.getPassword())
+            .database(dbUser.getDatabase())
+            .username(dbUser.getUsername())
+            .password(dbUser.getPassword())
             .build();
     }
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2024 the original author or authors
+ * Copyright 2025 the original author or authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,22 @@
  * limitations under the License.
  */
 
-package it.smartcommunitylab.dbsts.db;
+package it.smartcommunitylab.dbsts.postgresql;
 
-public interface DbAdapter {
-    DbUser create(DbUser user);
-    void delete(DbUser username);
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@ConfigurationProperties(prefix = "adapter.postgresql", ignoreUnknownFields = true)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class PostgresqlProperties {
+
+    private String database;
 }

@@ -4,9 +4,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * <p>
+ *
  * https://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,29 +18,22 @@ package it.smartcommunitylab.dbsts.postgresql;
 
 import it.smartcommunitylab.dbsts.db.DbAdapter;
 import it.smartcommunitylab.dbsts.db.DbUser;
-
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import javax.sql.DataSource;
-
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.format.datetime.DateFormatter;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-@Component
-@ConditionalOnProperty(prefix = "spring.datasource.sts", name = "platform", havingValue = "postgresql")
 @Slf4j
 public class PostgresqlAdapter implements DbAdapter {
 
@@ -48,23 +41,65 @@ public class PostgresqlAdapter implements DbAdapter {
     private static final String VALID_UNTIL = " VALID UNTIL %s ";
     private static final String IN_ROLE = " IN ROLE %s ";
 
-    private static final String DELETE_SQL = "DROP ROLE IF EXISTS %s";
+    private static final String GRANT_SQL = "GRANT CONNECT ON DATABASE %s TO %s";
+    private static final String ALTER_ROLE_SQL = "ALTER ROLE %s SET ROLE %s";
 
-    private static final String TIMESTAMP_FORMAT = "";
+    private static final String REVOKE_CONNECT_SQL = "REVOKE CONNECT ON DATABASE %s FROM %s";
+    private static final String REVOKE_ROLE_SQL = "REVOKE %s FROM %s;";
+
+    private static final String DISABLE_SQL = "ALTER USER IF EXISTS %s WITH NOLOGIN";
+
+    private static final String DROP_SQL = "DROP ROLE IF EXISTS %s";
 
     private final JdbcTemplate jdbcTemplate;
     private final DateFormat dateFormatter;
 
-    public PostgresqlAdapter(@Qualifier("stsJdbcTemplate") JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    private final PostgresqlProperties properties;
+    private String database;
+
+    public PostgresqlAdapter(DataSourceProperties dataSourceProperties, PostgresqlProperties properties) {
+        Assert.notNull(dataSourceProperties, "properties are required");
+        this.properties = properties;
+
+        //create dedicated dataSource and template
+        DataSource dataSource = dataSourceProperties.initializeDataSourceBuilder().build();
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+
+        if (StringUtils.hasText(properties.getDatabase())) {
+            //use selected
+            this.database = properties.getDatabase();
+        } else {
+            //extract from connection
+            try {
+                String value = "http://" + dataSourceProperties.getUrl().replaceFirst("jdbc:postgresql://", "");
+                URI url = new URI(value);
+                this.database = url.getPath() != null ? url.getPath().substring(1) : null;
+            } catch (URISyntaxException e) {
+                log.error("Error parsing url: {}", e);
+            }
+        }
+
         this.dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
     }
 
     @Override
     public DbUser create(DbUser user) {
-        String role = user.getUsername();
+        if (database != null && user.getDatabase() != null && !database.equals(user.getDatabase())) {
+            throw new IllegalArgumentException("invalid user: wrong database");
+        }
+
+        //set db
+        user.setDatabase(database);
+
+        //use a prefix
+        String role = "u_" + user.getUsername();
+        user.setUsername(role);
+
         String password = hash(user.getPassword());
-        String inRoles = user.getRoles() != null ? String.join(",", user.getRoles()) : null;
+        //keep only a single ROLE
+        String inRole = user.getRoles() != null && !user.getRoles().isEmpty()
+            ? user.getRoles().iterator().next()
+            : null;
         String until = user.getValidUntil() != null ? dateFormatter.format(Date.from(user.getValidUntil())) : null;
 
         if (!StringUtils.hasText(role) || !StringUtils.hasText(password)) {
@@ -81,37 +116,89 @@ public class PostgresqlAdapter implements DbAdapter {
             params.add(quote(until));
         }
 
-        if (inRoles != null && !inRoles.isEmpty()) {
+        if (inRole != null && !inRole.isEmpty()) {
             sql += IN_ROLE;
-            params.add(inRoles);
+            params.add(inRole);
         }
 
         //need to raw execute query to create roles...
-        String query = String.format(sql, params.toArray());
-
+        String createSql = String.format(sql, params.toArray());
         log.debug("create role for {}", role);
         if (log.isTraceEnabled()) {
-            log.trace("sql: {}", query);
+            log.trace("sql: {}", createSql);
+        }
+        jdbcTemplate.execute(createSql);
+
+        if (database != null) {
+            String grantSql = String.format(GRANT_SQL, database, role);
+            log.debug("grant connect role for {} to {}", role, database);
+            if (log.isTraceEnabled()) {
+                log.trace("sql: {}", grantSql);
+            }
+            jdbcTemplate.execute(grantSql);
         }
 
-        jdbcTemplate.execute(query);
+        if (inRole != null) {
+            String alterSql = String.format(ALTER_ROLE_SQL, role, inRole);
+            log.debug("alter role {} to {}", role, inRole);
+            if (log.isTraceEnabled()) {
+                log.trace("sql: {}", alterSql);
+            }
+            jdbcTemplate.execute(alterSql);
+        }
 
         return user;
     }
 
     @Override
-    public void delete(String role) {
-        if (!StringUtils.hasText(role)) {
-            throw new IllegalArgumentException("invalid user");
+    public void delete(DbUser user) {
+        //safety check
+        if (database != null && user.getDatabase() != null && !database.equals(user.getDatabase())) {
+            throw new IllegalArgumentException("invalid user: wrong database");
         }
 
+        String role = user.getUsername();
+
+        //keep only a single ROLE
+        String inRole = user.getRoles() != null && !user.getRoles().isEmpty()
+            ? user.getRoles().iterator().next()
+            : null;
+
         //need to raw execute query to drop roles...
-        String query = String.format(DELETE_SQL, role);
-        jdbcTemplate.execute(query);
+        if (database != null) {
+            String revokeConnectSql = String.format(REVOKE_CONNECT_SQL, database, role);
+            log.debug("revoke connect role for {} to {}", role, database);
+            if (log.isTraceEnabled()) {
+                log.trace("sql: {}", revokeConnectSql);
+            }
+            jdbcTemplate.execute(revokeConnectSql);
+        }
+
+        if (inRole != null) {
+            String revokeRoleSql = String.format(REVOKE_ROLE_SQL, inRole, role);
+            log.debug("revoke role {} to {}", inRole, role);
+            if (log.isTraceEnabled()) {
+                log.trace("sql: {}", revokeRoleSql);
+            }
+            jdbcTemplate.execute(revokeRoleSql);
+        }
+
+        String disableSql = String.format(DISABLE_SQL, role);
+        log.debug("disable login to {}", role);
+        if (log.isTraceEnabled()) {
+            log.trace("sql: {}", disableSql);
+        }
+        jdbcTemplate.execute(disableSql);
+
+        String dropSql = String.format(DROP_SQL, role);
+        log.debug("drop role {}", role);
+        if (log.isTraceEnabled()) {
+            log.trace("sql: {}", dropSql);
+        }
+        jdbcTemplate.execute(dropSql);
     }
 
     private String hash(String password) {
-
         //TODO md5 hash the password
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");

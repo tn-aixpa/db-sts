@@ -18,11 +18,10 @@ package it.smartcommunitylab.dbsts.db;
 
 import java.security.SecureRandom;
 import java.util.Random;
-
 import org.springframework.security.crypto.keygen.StringKeyGenerator;
 import org.springframework.util.Assert;
 
-public class KeyGenerator implements StringKeyGenerator {
+public class HumanStringKeyGenerator implements StringKeyGenerator {
 
     private static final int DEFAULT_KEY_LENGTH = 12;
     private static final char[] DEFAULT_SPACE =
@@ -30,14 +29,22 @@ public class KeyGenerator implements StringKeyGenerator {
 
     private Random random = new SecureRandom();
     private int length;
+    private final char[] space;
 
-    public KeyGenerator() {
+    public HumanStringKeyGenerator() {
         this(DEFAULT_KEY_LENGTH);
     }
 
-    public KeyGenerator(int length) {
+    public HumanStringKeyGenerator(int length) {
+        this(length, DEFAULT_SPACE);
+    }
+
+    public HumanStringKeyGenerator(int length, char[] space) {
         Assert.isTrue(length > 1, "length must be major than 1");
+        Assert.notNull(space, "char space is required");
+
         this.length = length;
+        this.space = space;
     }
 
     @Override
@@ -49,7 +56,7 @@ public class KeyGenerator implements StringKeyGenerator {
         //convert random bytes to the valid char space
         char[] chars = new char[bytes.length];
         for (int i = 0; i < bytes.length; i++) {
-            chars[i] = DEFAULT_SPACE[((bytes[i] & 0xFF) % DEFAULT_SPACE.length)];
+            chars[i] = space[((bytes[i] & 0xFF) % space.length)];
         }
 
         //as string

@@ -16,20 +16,28 @@ server:
 spring:
   application:
     name: db-sts
+  sql:
+    init:
+      schema-locations: classpath:schema-${spring.sql.init.platform}.sql
+      mode: always
+      platform: ${JDBC_PLATFORM:h2}    
   datasource:
-    sts:
-      driverClassName: org.postgresql.Driver
-      password: ${JDBC_PASS:}
-      username: ${JDBC_USER:sts}
-      url: ${JDBC_URL:}
-      platform: ${JDBC_PLATFORM:postgresql}
-    service:
-      driverClassName: org.postgresql.Driver
-      password: ${JDBC_SERVICE_PASS:}
-      username: ${JDBC_SERVICE_USER:users}
-      url: ${JDBC_SERVICE_URL:}
-      platform: ${JDBC_SERVICE_PLATFORM:postgresql}
+    driverClassName: ${JDBC_DRIVER:org.h2.Driver}
+    password: ${JDBC_PASS:password}
+    username: ${JDBC_USER:sa}
+    url: ${JDBC_URL:jdbc:h2:file:./data/db}    
 
+
+# adapters
+adapter:
+  connection:
+    driverClassName: ${CONNECTION_DRIVER:org.postgresql.Driver}
+    password: ${CONNECTION_PASS:}
+    username: ${CONNECTION_USER:}
+    url: ${CONNECTION_URL:}
+    platform: ${CONNECTION_PLATFORM:postgresql}
+  postgresql:
+    database: ${POSTGRES_DATABASE:}
 
 
 # Application 
@@ -42,8 +50,6 @@ logging:
    level:
       ROOT: INFO
       it.smartcommunitylabdhub: ${LOG_LEVEL:INFO}
-      com.zaxxer.hikari: DEBUG
-      org.hibernate: DEBUG
 
 # STS
 sts:

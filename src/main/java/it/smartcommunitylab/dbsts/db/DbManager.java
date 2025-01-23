@@ -20,12 +20,18 @@ import it.smartcommunitylab.dbsts.jwt.WebIdentity;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
-
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.keygen.StringKeyGenerator;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -34,22 +40,34 @@ import org.springframework.util.StringUtils;
 @Slf4j
 public class DbManager implements InitializingBean {
 
-    private final org.springframework.security.crypto.keygen.StringKeyGenerator pwdGenerator;
+    private final StringKeyGenerator pwdGenerator;
+    private final StringKeyGenerator usernameGenerator;
 
     private DbAdapter adapter;
 
-    private Long defaultDuration = 3600L;
+    private UserRepository userRepository;
+
+    private Long defaultDuration = 3600l;
     private Set<String> defaultRoles = Collections.emptySet();
 
     public DbManager(@Value("${sts.credentials.password-length}") Integer pwdLength) {
         Assert.notNull(pwdLength, "pwd length must be set");
 
-        this.pwdGenerator = new KeyGenerator(pwdLength);
+        this.pwdGenerator = new HumanStringKeyGenerator(pwdLength.intValue());
+        this.usernameGenerator = new HumanStringKeyGenerator(
+            12,
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray()
+        );
     }
 
     @Override
     public void afterPropertiesSet() throws Exception {
         Assert.notNull(adapter, "db adapter can not be null");
+    }
+
+    @Autowired(required = false)
+    public void setUserRepository(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     @Autowired
@@ -82,7 +100,7 @@ public class DbManager implements InitializingBean {
         }
 
         //validity
-        Instant now = Instant.now(); //(include)
+        Instant now = Instant.now();
         Instant expiration = webIdentity.getExpiresAt() != null
             ? webIdentity.getExpiresAt()
             : now.plus(defaultDuration, ChronoUnit.SECONDS);
@@ -99,7 +117,7 @@ public class DbManager implements InitializingBean {
         }
 
         //generate secure credentials
-        String username = pwdGenerator.generateKey();
+        String username = usernameGenerator.generateKey();
         String password = pwdGenerator.generateKey();
 
         //convert
@@ -118,13 +136,51 @@ public class DbManager implements InitializingBean {
             log.trace("user: {}", user);
         }
 
+        if (userRepository != null) {
+            //store user
+            User u = User.builder()
+                .id(UUID.randomUUID().toString())
+                .webIssuer(webIdentity.getIssuer())
+                .webUser(webIdentity.getUsername())
+                .dbDatabase(user.getDatabase())
+                .dbUser(user.getUsername())
+                .dbRoles(user.getRoles() != null ? user.getRoles().toArray(new String[0]) : null)
+                .dbValidUntil(Date.from(user.getValidUntil()))
+                .build();
+
+            userRepository.store(u);
+        }
+
         //return
         return user;
     }
 
-    // Delete roles for users
-    public void delete(String roles) {
-        adapter.delete(roles);
+    public void delete(DbUser user) {
+        if (user != null && StringUtils.hasText(user.getUsername())) {
+            log.debug("delete db user {}", user.getUsername());
+
+            adapter.delete(user);
+        }
     }
 
+    public void cleanupExpired() {
+        log.debug("cleanup expired users");
+        if (userRepository != null) {
+            userRepository
+                .findExpired()
+                .forEach(user -> {
+                    try {
+                        DbUser dbUser = DbUser.builder()
+                            .database(user.getDbDatabase())
+                            .username(user.getDbUser())
+                            .roles(user.getDbRoles() != null ? Arrays.asList(user.getDbRoles()) : null)
+                            .build();
+
+                        adapter.delete(dbUser);
+                    } catch (Exception e) {
+                        log.error("Error removing user: {}", e);
+                    }
+                });
+        }
+    }
 }

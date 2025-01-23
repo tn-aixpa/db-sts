@@ -33,12 +33,12 @@ import lombok.ToString;
 @ToString
 public class WebIdentity {
 
-    private String issuer; //(include)
+    private String issuer;
 
-    private String username; //(include)
+    private String username;
     private String password;
     private Collection<String> roles;
 
     private Instant createdAt;
-    private Instant expiresAt; //(include)
+    private Instant expiresAt;
 }
