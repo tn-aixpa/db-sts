@@ -16,9 +16,12 @@
 
 package it.smartcommunitylab.dbsts.jwt;
 
+import it.smartcommunitylab.dbsts.api.TokenRequest;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -43,6 +46,7 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -78,6 +82,69 @@ public class JwtService {
     public void setDuration(@Value("${sts.credentials.duration}") Integer duration) {
         if (duration != null && duration > 120) {
             this.defaultDuration = duration;
+        }
+    }
+
+    public WebIdentity assumeWebIdentity(@NotNull TokenRequest request) {
+        //resolve token if available
+        String token = request.getToken();
+        Integer duration = request.getDuration();
+
+        if (StringUtils.hasText(token)) {
+            //use info from token
+            return assumeWebIdentity(token, duration);
+        }
+
+        //fallback to request params
+        String username = request.getUsername();
+        String database = request.getDatabase();
+        List<String> roles = request.getRoles() != null ? new ArrayList<>(request.getRoles()) : null;
+
+        if (StringUtils.hasText(username)) {
+            return assumeWebIdentity(username, database, roles, duration);
+        }
+
+        throw new IllegalArgumentException("invalid request: missing params");
+    }
+
+    public WebIdentity assumeWebIdentity(
+        @NotNull String username,
+        @Nullable String database,
+        @Nullable List<String> roles,
+        @Nullable Integer duration
+    ) {
+        log.info("assume web identity request");
+        if (log.isTraceEnabled()) {
+            log.trace("user: {}", username);
+        }
+
+        try {
+            //evaluate token expiration
+            Instant now = Instant.now();
+            Instant expiration = now.plus(defaultDuration, ChronoUnit.SECONDS);
+            Instant expd = duration != null ? now.plus(duration, ChronoUnit.SECONDS) : null;
+            if (expd != null && expd.isBefore(expiration)) {
+                //request duration is smaller than token expiration, use it
+                expiration = expd;
+            }
+
+            //build identity
+            WebIdentity id = WebIdentity.builder()
+                .issuer(issuerUri)
+                .createdAt(now)
+                .expiresAt(expiration)
+                .username(username)
+                .roles(roles)
+                .database(database)
+                .build();
+
+            if (log.isTraceEnabled()) {
+                log.trace("web identity: {}", id);
+            }
+
+            return id;
+        } catch (AuthenticationException ae1) {
+            throw new IllegalArgumentException("invalid or missing token");
         }
     }
 
@@ -120,6 +187,12 @@ public class JwtService {
 
             Collection<String> webRoles = roles != null ? roles : Collections.emptyList();
 
+            //check if scoped request
+            String database = null;
+            if (webAuth instanceof JwtAuthenticationToken) {
+                database = ((JwtAuthenticationToken) webAuth).getToken().getClaimAsString("database");
+            }
+
             //build identity
             WebIdentity id = WebIdentity.builder()
                 .issuer(issuerUri)
@@ -127,6 +200,7 @@ public class JwtService {
                 .expiresAt(expiration)
                 .username(webAuth.getName())
                 .roles(webRoles)
+                .database(database)
                 .build();
 
             if (log.isTraceEnabled()) {

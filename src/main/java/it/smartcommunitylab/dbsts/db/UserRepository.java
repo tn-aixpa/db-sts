@@ -19,9 +19,10 @@ import org.springframework.util.StringUtils;
 public class UserRepository {
 
     private static final String INSERT_SQL =
-        "INSERT INTO users (id, created_at, web_issuer, web_user, db_database, db_user, db_roles, valid_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-    private static final String SELECT_EXPIRED = "SELECT * FROM users WHERE valid_until < ?";
+        "INSERT INTO users (id, created_at, web_issuer, web_user, db_database, db_user, db_roles, valid_until, _status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    private static final String SELECT_EXPIRED = "SELECT * FROM users WHERE valid_until < ? AND _status = 'active'";
     private static final String DELETE_SQL = "DELETE FROM users WHERE id = ?";
+    private static final String EXPIRE_SQL = "UPDATE users _status = 'inactive' WHERE id = ?";
 
     private final JdbcTemplate jdbcTemplate;
     private RowMapper<User> rowMapper;
@@ -48,6 +49,7 @@ public class UserRepository {
                 user.getDbUser(),
                 dbRoles,
                 user.getDbValidUntil(),
+                "active",
             },
             new int[] {
                 Types.VARCHAR,
@@ -58,8 +60,17 @@ public class UserRepository {
                 Types.VARCHAR,
                 Types.VARCHAR,
                 Types.TIMESTAMP,
+                Types.VARCHAR,
             }
         );
+    }
+
+    public void expire(String id) {
+        if (id == null) {
+            throw new IllegalArgumentException("invalid id");
+        }
+
+        jdbcTemplate.update(EXPIRE_SQL, id);
     }
 
     public void remove(String id) {
@@ -98,6 +109,7 @@ public class UserRepository {
                 .dbUser(rs.getString("db_user"))
                 .dbRoles(roles != null ? StringUtils.commaDelimitedListToStringArray(roles) : null)
                 .dbValidUntil(rs.getTimestamp("valid_until"))
+                .status(rs.getString("_status"))
                 .build();
         }
     }

@@ -35,6 +35,15 @@ import lombok.ToString;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class TokenResponse implements Serializable {
 
+    @JsonProperty("platform")
+    private String platform;
+
+    @JsonProperty("host")
+    private String host;
+
+    @JsonProperty("port")
+    private Integer port;
+
     @JsonProperty("database")
     private String database;
 

@@ -36,6 +36,7 @@ adapter:
     username: ${CONNECTION_USER:}
     url: ${CONNECTION_URL:}
     platform: ${CONNECTION_PLATFORM:postgresql}
+    policy: ${CONNECTION_POLICY:expire}
   postgresql:
     database: ${POSTGRES_DATABASE:}
 

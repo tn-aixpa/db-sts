@@ -28,4 +28,6 @@ public class User {
     private String[] dbRoles;
 
     private Date dbValidUntil;
+
+    private String status;
 }

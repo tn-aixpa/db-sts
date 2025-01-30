@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -44,8 +45,8 @@ public class DbManager implements InitializingBean {
     private final StringKeyGenerator usernameGenerator;
 
     private DbAdapter adapter;
-
     private UserRepository userRepository;
+    private String policy = "expire";
 
     private Long defaultDuration = 3600l;
     private Set<String> defaultRoles = Collections.emptySet();
@@ -89,6 +90,11 @@ public class DbManager implements InitializingBean {
         this.adapter = adapter;
     }
 
+    @Autowired
+    public void setPolicy(@Value("${adapter.connection.policy}") String policy) {
+        this.policy = policy;
+    }
+
     public DbUser exchange(@NotNull WebIdentity webIdentity, Collection<String> requestedRoles) {
         if (webIdentity == null) {
             throw new IllegalArgumentException("invalid web identity");
@@ -116,12 +122,16 @@ public class DbManager implements InitializingBean {
             roles = new HashSet<>(requestedRoles);
         }
 
+        //database
+        String database = webIdentity.getDatabase();
+
         //generate secure credentials
         String username = usernameGenerator.generateKey();
         String password = pwdGenerator.generateKey();
 
         //convert
         DbUser user = DbUser.builder()
+            .database(database)
             .username(username)
             .password(password)
             .roles(roles)
@@ -146,6 +156,7 @@ public class DbManager implements InitializingBean {
                 .dbUser(user.getUsername())
                 .dbRoles(user.getRoles() != null ? user.getRoles().toArray(new String[0]) : null)
                 .dbValidUntil(Date.from(user.getValidUntil()))
+                .status("active")
                 .build();
 
             userRepository.store(u);
@@ -166,21 +177,29 @@ public class DbManager implements InitializingBean {
     public void cleanupExpired() {
         log.debug("cleanup expired users");
         if (userRepository != null) {
-            userRepository
-                .findExpired()
-                .forEach(user -> {
-                    try {
-                        DbUser dbUser = DbUser.builder()
-                            .database(user.getDbDatabase())
-                            .username(user.getDbUser())
-                            .roles(user.getDbRoles() != null ? Arrays.asList(user.getDbRoles()) : null)
-                            .build();
+            List<User> users = userRepository.findExpired();
+            users.forEach(user -> {
+                //remove from adapter
+                try {
+                    DbUser dbUser = DbUser.builder()
+                        .database(user.getDbDatabase())
+                        .username(user.getDbUser())
+                        .roles(user.getDbRoles() != null ? Arrays.asList(user.getDbRoles()) : null)
+                        .build();
 
-                        adapter.delete(dbUser);
-                    } catch (Exception e) {
-                        log.error("Error removing user: {}", e);
-                    }
-                });
+                    adapter.delete(dbUser);
+                } catch (Exception e) {
+                    log.error("Error removing user: {}", e);
+                }
+
+                if ("expire".equals(policy)) {
+                    //expire
+                    userRepository.expire(user.getId());
+                } else {
+                    //delete
+                    userRepository.remove(user.getId());
+                }
+            });
         }
     }
 }

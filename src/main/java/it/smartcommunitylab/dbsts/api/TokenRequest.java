@@ -36,12 +36,12 @@ import lombok.ToString;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class TokenRequest implements Serializable {
 
-    @JsonProperty("web-identity-token")
     private String token;
 
-    @JsonProperty("duration")
+    private String username;
+    private String database;
+
     private Integer duration;
 
-    @JsonProperty("assume-roles")
     private Set<String> roles;
 }

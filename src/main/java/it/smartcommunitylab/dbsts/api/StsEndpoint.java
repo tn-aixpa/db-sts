@@ -16,20 +16,19 @@
 
 package it.smartcommunitylab.dbsts.api;
 
+import it.smartcommunitylab.dbsts.api.TokenResponse.TokenResponseBuilder;
 import it.smartcommunitylab.dbsts.db.DbManager;
 import it.smartcommunitylab.dbsts.db.DbUser;
-import it.smartcommunitylab.dbsts.db.User;
-import it.smartcommunitylab.dbsts.db.UserRepository;
 import it.smartcommunitylab.dbsts.jwt.JwtService;
 import it.smartcommunitylab.dbsts.jwt.WebIdentity;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.CurrentSecurityContext;
@@ -40,6 +39,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @RestController
 @Slf4j
@@ -52,6 +53,12 @@ public class StsEndpoint implements InitializingBean {
 
     @Autowired
     private DbManager dbManager;
+
+    @Value("${adapter.connection.platform}")
+    private String platform;
+
+    @Value("${adapter.connection.url}")
+    private String url;
 
     @Override
     public void afterPropertiesSet() throws Exception {
@@ -77,23 +84,17 @@ public class StsEndpoint implements InitializingBean {
 
         TokenRequest request = TokenRequest.builder()
             .token(params.get("token"))
+            .username(params.get("username"))
             .duration(params.get("duration") != null ? Integer.parseInt(params.get("duration")) : null)
             .roles(params.get("roles") != null ? StringUtils.commaDelimitedListToSet(params.get("roles")) : null)
+            .database(params.get("database"))
             .build();
 
         String client = authentication.getName();
         log.debug("request token exchange for client {}", client);
 
-        //resolve token
-        String token = request.getToken();
-        Integer duration = request.getDuration();
-        if (log.isTraceEnabled()) {
-            log.trace("token: {}", token);
-        }
-
-        log.debug("assume web identity for client {}", client);
-
-        WebIdentity webIdentity = jwtService.assumeWebIdentity(token, duration);
+        WebIdentity webIdentity = jwtService.assumeWebIdentity(request);
+        log.debug("assume web identity {} for client {}", webIdentity.getUsername(), client);
 
         //obtain db user
         Set<String> roles = request.getRoles();
@@ -112,12 +113,34 @@ public class StsEndpoint implements InitializingBean {
             ? Duration.between(Instant.now(), dbUser.getValidUntil()).toSeconds()
             : null;
 
-        return TokenResponse.builder()
+        TokenResponseBuilder response = TokenResponse.builder()
             .clientId(client)
             .expiration(expiration)
             .database(dbUser.getDatabase())
             .username(dbUser.getUsername())
-            .password(dbUser.getPassword())
-            .build();
+            .password(dbUser.getPassword());
+
+        //include connection details
+        if (StringUtils.hasText(platform)) {
+            response.platform(platform);
+        }
+
+        if (StringUtils.hasText(url)) {
+            try {
+                UriComponents uri = UriComponentsBuilder.fromUriString(url.replaceFirst("jdbc:", "")).build();
+
+                if (StringUtils.hasText(uri.getHost())) {
+                    response.host(uri.getHost());
+                }
+                if (uri.getPort() > 0) {
+                    response.port(uri.getPort());
+                }
+                //TODO additional configuration exposed by adapter
+            } catch (Exception e) {
+                //skip
+            }
+        }
+
+        return response.build();
     }
 }

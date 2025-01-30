@@ -25,8 +25,10 @@ import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
@@ -47,7 +49,7 @@ public class PostgresqlAdapter implements DbAdapter {
     private static final String REVOKE_CONNECT_SQL = "REVOKE CONNECT ON DATABASE %s FROM %s";
     private static final String REVOKE_ROLE_SQL = "REVOKE %s FROM %s;";
 
-    private static final String DISABLE_SQL = "ALTER USER IF EXISTS %s WITH NOLOGIN";
+    private static final String DISABLE_SQL = "ALTER USER %s WITH NOLOGIN";
 
     private static final String DROP_SQL = "DROP ROLE IF EXISTS %s";
 
@@ -55,7 +57,7 @@ public class PostgresqlAdapter implements DbAdapter {
     private final DateFormat dateFormatter;
 
     private final PostgresqlProperties properties;
-    private String database;
+    private Set<String> databases;
 
     public PostgresqlAdapter(DataSourceProperties dataSourceProperties, PostgresqlProperties properties) {
         Assert.notNull(dataSourceProperties, "properties are required");
@@ -67,13 +69,13 @@ public class PostgresqlAdapter implements DbAdapter {
 
         if (StringUtils.hasText(properties.getDatabase())) {
             //use selected
-            this.database = properties.getDatabase();
+            this.databases = StringUtils.commaDelimitedListToSet(properties.getDatabase());
         } else {
-            //extract from connection
+            //extract single from connection
             try {
                 String value = "http://" + dataSourceProperties.getUrl().replaceFirst("jdbc:postgresql://", "");
                 URI url = new URI(value);
-                this.database = url.getPath() != null ? url.getPath().substring(1) : null;
+                this.databases = url.getPath() != null ? Collections.singleton(url.getPath().substring(1)) : null;
             } catch (URISyntaxException e) {
                 log.error("Error parsing url: {}", e);
             }
@@ -84,12 +86,12 @@ public class PostgresqlAdapter implements DbAdapter {
 
     @Override
     public DbUser create(DbUser user) {
-        if (database != null && user.getDatabase() != null && !database.equals(user.getDatabase())) {
+        if (databases != null && user.getDatabase() != null && !databases.contains(user.getDatabase())) {
             throw new IllegalArgumentException("invalid user: wrong database");
         }
 
-        //set db
-        user.setDatabase(database);
+        //get db
+        String database = user.getDatabase();
 
         //use a prefix
         String role = "u_" + user.getUsername();
@@ -153,11 +155,12 @@ public class PostgresqlAdapter implements DbAdapter {
     @Override
     public void delete(DbUser user) {
         //safety check
-        if (database != null && user.getDatabase() != null && !database.equals(user.getDatabase())) {
+        if (databases != null && user.getDatabase() != null && !databases.contains(user.getDatabase())) {
             throw new IllegalArgumentException("invalid user: wrong database");
         }
 
         String role = user.getUsername();
+        String database = user.getDatabase();
 
         //keep only a single ROLE
         String inRole = user.getRoles() != null && !user.getRoles().isEmpty()

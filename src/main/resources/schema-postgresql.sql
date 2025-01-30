@@ -7,7 +7,8 @@ CREATE TABLE
         db_database VARCHAR(255),
         db_user VARCHAR(255),
         db_roles VARCHAR(255),
-        valid_until TIMESTAMP(6) WITH TIME ZONE
+        valid_until TIMESTAMP(6) WITH TIME ZONE,
+        _status VARCHAR(10)        
     );
 
 CREATE INDEX IF NOT EXISTS users_id_index ON public.users (id);

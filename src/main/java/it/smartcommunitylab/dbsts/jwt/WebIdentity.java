@@ -38,6 +38,7 @@ public class WebIdentity {
     private String username;
     private String password;
     private Collection<String> roles;
+    private String database;
 
     private Instant createdAt;
     private Instant expiresAt;
