@@ -20,8 +20,6 @@ import it.smartcommunitylab.dbsts.db.DbAdapter;
 import it.smartcommunitylab.dbsts.db.DbUser;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -93,11 +91,9 @@ public class PostgresqlAdapter implements DbAdapter {
         //get db
         String database = user.getDatabase();
 
-        //use a prefix
-        String role = "u_" + user.getUsername();
-        user.setUsername(role);
+        String role = user.getUsername();
+        String password = user.getPassword();
 
-        String password = hash(user.getPassword());
         //keep only a single ROLE
         String inRole = user.getRoles() != null && !user.getRoles().isEmpty()
             ? user.getRoles().iterator().next()
@@ -199,25 +195,6 @@ public class PostgresqlAdapter implements DbAdapter {
             log.trace("sql: {}", dropSql);
         }
         jdbcTemplate.execute(dropSql);
-    }
-
-    private String hash(String password) {
-        //TODO md5 hash the password
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(password.getBytes());
-
-            byte[] digest = md.digest();
-
-            StringBuilder sb = new StringBuilder();
-            for (byte b : digest) {
-                sb.append(String.format("%02x", b));
-            }
-            password = sb.toString();
-            return password;
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private String quote(String value) {

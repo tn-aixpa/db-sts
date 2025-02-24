@@ -55,9 +55,10 @@ public class DbManager implements InitializingBean {
         Assert.notNull(pwdLength, "pwd length must be set");
 
         this.pwdGenerator = new HumanStringKeyGenerator(pwdLength.intValue());
-        this.usernameGenerator = new HumanStringKeyGenerator(
-            12,
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray()
+        //use lowercase for usernames
+        this.usernameGenerator = new CombinedKeyGenerator(
+            new HumanStringKeyGenerator(4, "abcdefghijklmnopqrstuvwxyz".toCharArray()),
+            new HumanStringKeyGenerator(8, "abcdefghijklmnopqrstuvwxyz1234567890".toCharArray())
         );
     }
 
