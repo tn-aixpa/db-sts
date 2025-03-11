@@ -22,7 +22,7 @@ public class UserRepository {
         "INSERT INTO users (id, created_at, web_issuer, web_user, db_database, db_user, db_roles, valid_until, _status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     private static final String SELECT_EXPIRED = "SELECT * FROM users WHERE valid_until < ? AND _status = 'active'";
     private static final String DELETE_SQL = "DELETE FROM users WHERE id = ?";
-    private static final String EXPIRE_SQL = "UPDATE users _status = 'inactive' WHERE id = ?";
+    private static final String EXPIRE_SQL = "UPDATE users SET _status = 'inactive' WHERE id = ?";
 
     private final JdbcTemplate jdbcTemplate;
     private RowMapper<User> rowMapper;
