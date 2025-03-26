@@ -160,6 +160,10 @@ public class DbManager implements InitializingBean {
                 .status("active")
                 .build();
 
+            log.debug("store user {} for {}", u.getDbUser(), u.getWebUser());
+            if (log.isTraceEnabled()) {
+                log.trace("u: {}", u);
+            }
             userRepository.store(u);
         }
 
@@ -180,6 +184,10 @@ public class DbManager implements InitializingBean {
         if (userRepository != null) {
             List<User> users = userRepository.findExpired();
             users.forEach(user -> {
+                log.debug("cleanup {} db user {}", user.getId(), user.getDbUser());
+                if (log.isTraceEnabled()) {
+                    log.trace("user: {}", user);
+                }
                 //remove from adapter
                 try {
                     DbUser dbUser = DbUser.builder()
@@ -195,9 +203,11 @@ public class DbManager implements InitializingBean {
 
                 if ("expire".equals(policy)) {
                     //expire
+                    log.debug("expire user {}", user.getId());
                     userRepository.expire(user.getId());
                 } else {
                     //delete
+                    log.debug("remove user {}", user.getId());
                     userRepository.remove(user.getId());
                 }
             });

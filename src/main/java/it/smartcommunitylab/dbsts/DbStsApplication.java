@@ -14,14 +14,25 @@
 
 package it.smartcommunitylab.dbsts;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-public class DbStsApplication {
+@Slf4j
+public class DbStsApplication implements CommandLineRunner {
+
+    @Value("${logging.level.it.smartcommunitylab}")
+    private String logLevel;
 
     public static void main(String[] args) {
         SpringApplication.run(DbStsApplication.class, args);
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+        log.info("Using LOG_LEVEL: {}", logLevel);
     }
 }

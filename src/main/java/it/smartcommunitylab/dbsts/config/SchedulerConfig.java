@@ -18,12 +18,12 @@ public class SchedulerConfig {
     @Bean
     public ThreadPoolTaskScheduler taskScheduler() {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-        scheduler.setPoolSize(50);
+        scheduler.setPoolSize(5);
         scheduler.setThreadNamePrefix("scheduled-task-");
         return scheduler;
     }
 
-    @Scheduled(cron = "0 */1 * * * *")
+    @Scheduled(fixedDelay = 180000, initialDelay = 10000)
     public void removeExpiredUsers() {
         dbManager.cleanupExpired();
     }

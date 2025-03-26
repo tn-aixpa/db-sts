@@ -50,7 +50,7 @@ application:
 logging:
    level:
       ROOT: INFO
-      it.smartcommunitylabdhub: ${LOG_LEVEL:INFO}
+      it.smartcommunitylab: ${LOG_LEVEL:INFO}
 
 # STS
 sts:
