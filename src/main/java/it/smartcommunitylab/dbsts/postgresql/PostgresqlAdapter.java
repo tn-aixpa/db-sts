@@ -59,6 +59,8 @@ public class PostgresqlAdapter implements DbAdapter {
 
     public PostgresqlAdapter(DataSourceProperties dataSourceProperties, PostgresqlProperties properties) {
         Assert.notNull(dataSourceProperties, "properties are required");
+        Assert.hasText(dataSourceProperties.getUrl(), "url is required");
+
         this.properties = properties;
 
         //create dedicated dataSource and template

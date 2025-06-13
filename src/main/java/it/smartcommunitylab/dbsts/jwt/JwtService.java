@@ -58,7 +58,7 @@ public class JwtService {
     private static final String ROLE_PREFIX = "PG_";
     private final String issuerUri;
 
-    private final JwtAuthenticationProvider jwtAuthProvider;
+    private JwtAuthenticationProvider jwtAuthProvider;
 
     private int defaultDuration = 3600;
 
@@ -67,15 +67,13 @@ public class JwtService {
         @Value("${sts.jwt.audience}") String audience,
         @Value("${sts.jwt.claim}") String claim
     ) {
-        Assert.hasText(issuerUri, "issuer can not be null");
-
         this.issuerUri = issuerUri;
-
-        //build auth provider to validate web jwt
-        JwtAuthenticationProvider provider = new JwtAuthenticationProvider(jwtDecoder(issuerUri, audience));
-        provider.setJwtAuthenticationConverter(jwtAuthConverter(claim));
-
-        this.jwtAuthProvider = provider;
+        if (StringUtils.hasText(issuerUri)) {
+            //build auth provider to validate web jwt
+            JwtAuthenticationProvider provider = new JwtAuthenticationProvider(jwtDecoder(issuerUri, audience));
+            provider.setJwtAuthenticationConverter(jwtAuthConverter(claim));
+            this.jwtAuthProvider = provider;
+        }
     }
 
     @Autowired
@@ -150,6 +148,10 @@ public class JwtService {
 
     public WebIdentity assumeWebIdentity(@NotNull String token, Integer duration) {
         log.info("assume web identity request");
+        if (jwtAuthProvider == null) {
+            throw new IllegalArgumentException("token exchange not supported, jwt provider not configured");
+        }
+
         if (log.isTraceEnabled()) {
             log.trace("token: {}", token);
         }
