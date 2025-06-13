@@ -1,16 +1,16 @@
 # server config
 server:
-   host: ${SERVER_HOST:localhost}
-   port: ${SERVER_PORT:8080}
-   servlet:
-     context-path: ${SERVER_CONTEXT:/}
-   tomcat:
-     remoteip:
+  host: ${SERVER_HOST:localhost}
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: ${SERVER_CONTEXT:/}
+  tomcat:
+    remoteip:
       remote_ip_header: ${SERVER_TOMCAT_REMOTE_IP_HEADER:x-forwarded-for}
       protocol_header: ${SERVER_TOMCAT_PROTOCOL_HEADER:x-forwarded-proto}
-   max-http-request-header-size: 32000
-   error:
-      include-stacktrace: never
+  max-http-request-header-size: 32000
+  error:
+    include-stacktrace: never
 
 # Spring configuration
 spring:
@@ -20,13 +20,12 @@ spring:
     init:
       schema-locations: classpath:schema-${spring.sql.init.platform}.sql
       mode: always
-      platform: ${JDBC_PLATFORM:h2}    
+      platform: ${JDBC_PLATFORM:h2}
   datasource:
     driverClassName: ${JDBC_DRIVER:org.h2.Driver}
     password: ${JDBC_PASS:password}
     username: ${JDBC_USER:sa}
-    url: ${JDBC_URL:jdbc:h2:file:./data/db}    
-
+    url: ${JDBC_URL:jdbc:h2:file:./data/db}
 
 # adapters
 adapter:
@@ -40,17 +39,16 @@ adapter:
   postgresql:
     database: ${POSTGRES_DATABASE:}
 
-
-# Application 
+# Application
 application:
   endpoint: ${STS_ENDPOINT:http://${server.host}:${server.port}}
-  name: @project.name@
-  description: @project.description@
-  version: @project.version@
+  name: "@project.name@"
+  description: "@project.description@"
+  version: "@project.version@"
 logging:
-   level:
-      ROOT: INFO
-      it.smartcommunitylab: ${LOG_LEVEL:INFO}
+  level:
+    ROOT: INFO
+    it.smartcommunitylab: ${LOG_LEVEL:INFO}
 
 # STS
 sts:
@@ -65,4 +63,3 @@ sts:
     issuer-uri: ${STS_JWT_ISSUER_URI:}
     audience: ${STS_JWT_AUDIENCE:sts}
     claim: ${STS_JWT_CLAIM:roles}
-
